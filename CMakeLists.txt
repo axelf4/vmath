@@ -1,8 +1,8 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required(VERSION 2.8)
 project(vmath C)
 
-include_directories(include)
-add_library(vmath STATIC include/vmath.h)
+add_library(vmath STATIC vmath.h)
+set_target_properties(vmath PROPERTIES LINKER_LANGUAGE C)
 
 if(MSVC)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D__SSE__ -D__SSE2__ -D__SSE3__ -D__SSE4_1__ -D__SSE4_2__)
