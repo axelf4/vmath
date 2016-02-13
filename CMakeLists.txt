@@ -36,6 +36,6 @@ if(BUILD_TESTS)
 
 	add_executable(runTests test/test.cpp)
 	# target_link_libraries(runTests ${GTEST_BOTH_LIBRARIES} pthread ${LIBRARIES})
-	target_link_libraries(runTests gtest gtest_main f2 ${GLEW_LIBRARY} ${OPENGL_LIBRARIES})
+	target_link_libraries(runTests gtest gtest_main vmath)
 	# add_test(NAME runTests COMMAND runTests)
 endif()

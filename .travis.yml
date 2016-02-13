@@ -4,5 +4,5 @@ compiler:
   - clang
 sudo: false
 script:
-  - (mkdir build && cd build && cmake -DBUILD_TESTS=OFF -G "Unix Makefiles" .. && make)
-  # - build/runTests
+  - (mkdir build && cd build && cmake -DBUILD_TESTS=ON -G "Unix Makefiles" .. && make)
+  - build/runTests
