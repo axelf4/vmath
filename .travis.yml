@@ -1,8 +1,14 @@
 language: c
-compiler:
-  - gcc
-  - clang
 sudo: false
-script:
-  - (mkdir build && cd build && cmake -DBUILD_TESTS=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF -G "Unix Makefiles" .. && make)
-  - build/runTests
+addons:
+    apt:
+        packages:
+        - libgtest-dev
+env:
+    - CXXFLAGS=-DVMATH_TEST_NO_INTRINSICS=ON
+    - CXXFLAGS=-msse
+    - CXXFLAGS="-msse -msse2"
+    - CXXFLAGS="-msse -msse2 -msse3"
+    - CXXFLAGS="-msse -msse2 -msse3 -msse4.1"
+    - CXXFLAGS="-msse -msse2 -msse3 -msse4.1 -msse4.2"
+script: (mkdir googletest && cd googletest && cmake /usr/src/gtest/ && cmake --build .) && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS:BOOL=ON -DGTEST_ROOT:STRING=googletest -DCMAKE_CXX_FLAGS=$CXXFLAGS .. && cmake --build . && ./runTests
