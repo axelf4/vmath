@@ -121,6 +121,11 @@ namespace {
 		EXPECT_TRUE(MatrixEqual(&a, &b) == 0xFFFF);
 	}
 
+	TEST(Matrix, MatrixTranspose_simpleValues_Calculated) {
+		MATRIX a = MatrixTranspose(MatrixSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)), b = MatrixSet(1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16);
+		EXPECT_TRUE(MatrixEqual(&a, &b) == 0xFFFF);
+	}
+
 	TEST(Matrix, MatrixMultiply_simpleValues_Calculated) {
 		MATRIX m1 = MatrixSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), m2 = MatrixSet(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
 		MATRIX a = MatrixMultiply(m1, m2), b = MatrixSet(80, 70, 60, 50, 240, 214, 188, 162, 400, 358, 316, 274, 560, 502, 444, 386);
@@ -129,7 +134,7 @@ namespace {
 
 	TEST(Matrix, MatrixInverse_simpleValues_Calculated) {
 		MATRIX a = MatrixSet(2, 3, 1, 5, 1, 0, 3, 1, 0, 2, -3, 2, 0, 2, 3, 1), b = MatrixSet(18, -35, -28, 1, 9, -18, -14, 1, -2, 4, 3, 0, -12, 24, 19, -1);
-		MATRIX inverse = MatrixInverse(&a);
+		MATRIX inverse = MatrixInverse(a);
 		EXPECT_TRUE(matricesEqual(&inverse, &b));
 	}
 }

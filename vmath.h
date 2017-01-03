@@ -548,16 +548,16 @@ extern "C" {
 	 * @param a The matrix to transpose.
 	 * @return The transposed matrix \a a.
 	 */
-	VMATH_INLINE MATRIX MatrixTranspose(MATRIX *a) {
+	VMATH_INLINE MATRIX MatrixTranspose(MATRIX a) {
 #ifdef VMATH_SSE_INTRINSICS
-		__m128 tmp0 = _mm_unpacklo_ps(a->row0, a->row1),
-			   tmp2 = _mm_unpacklo_ps(a->row2, a->row3),
-			   tmp1 = _mm_unpackhi_ps(a->row0, a->row1),
-			   tmp3 = _mm_unpackhi_ps(a->row2, a->row3);
+		__m128 tmp0 = _mm_unpacklo_ps(a.row0, a.row1),
+			   tmp2 = _mm_unpacklo_ps(a.row2, a.row3),
+			   tmp1 = _mm_unpackhi_ps(a.row0, a.row1),
+			   tmp3 = _mm_unpackhi_ps(a.row2, a.row3);
 		MATRIX m = { _mm_movelh_ps(tmp0, tmp2), _mm_movehl_ps(tmp2, tmp0), _mm_movelh_ps(tmp1, tmp3), _mm_movehl_ps(tmp3, tmp1) };
 		return m;
 #else
-		MATRIX m = { a->m[0], a->m[4], a->m[8], a->m[12], a->m[1], a->m[5], a->m[9], a->m[13], a->m[2], a->m[6], a->m[10], a->m[14], a->m[3], a->m[7], a->m[11], a->m[15] };
+		MATRIX m = { a.m[0], a.m[4], a.m[8], a.m[12], a.m[1], a.m[5], a.m[9], a.m[13], a.m[2], a.m[6], a.m[10], a.m[14], a.m[3], a.m[7], a.m[11], a.m[15] };
 		return m;
 #endif
 	}
@@ -567,15 +567,14 @@ extern "C" {
 	 * @param a The matrix to inverse.
 	 * @return The inversed matrix \a a.
 	 */
-	VMATH_INLINE MATRIX MatrixInverse(MATRIX *a) {
+	VMATH_INLINE MATRIX MatrixInverse(MATRIX a) {
 #ifdef VMATH_SSE_INTRINSICS
 		__m128 minor0, minor1, minor2, minor3, row0, row1, row2, row3, det, tmp;
-		MATRIX transpose = MatrixTranspose(a);
-		a = &transpose;
-		row0 = a->row0;
-		row1 = _mm_shuffle_ps(a->row1, a->row1, 0x4E);
-		row2 = a->row2;
-		row3 = _mm_shuffle_ps(a->row3, a->row3, 0x4E);
+		a = MatrixTranspose(a);
+		row0 = a.row0;
+		row1 = _mm_shuffle_ps(a.row1, a.row1, 0x4E);
+		row2 = a.row2;
+		row3 = _mm_shuffle_ps(a.row3, a.row3, 0x4E);
 		// -----------------------------------------------
 		tmp = _mm_mul_ps(row2, row3);
 		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
@@ -639,24 +638,24 @@ extern "C" {
 		return m;
 #else
 		float inv[16], det;
-		inv[0] = a->m[5] * a->m[10] * a->m[15] - a->m[5] * a->m[11] * a->m[14] - a->m[9] * a->m[6] * a->m[15] + a->m[9] * a->m[7] * a->m[14] + a->m[13] * a->m[6] * a->m[11] - a->m[13] * a->m[7] * a->m[10];
-		inv[4] = -a->m[4] * a->m[10] * a->m[15] + a->m[4] * a->m[11] * a->m[14] + a->m[8] * a->m[6] * a->m[15] - a->m[8] * a->m[7] * a->m[14] - a->m[12] * a->m[6] * a->m[11] + a->m[12] * a->m[7] * a->m[10];
-		inv[8] = a->m[4] * a->m[9] * a->m[15] - a->m[4] * a->m[11] * a->m[13] - a->m[8] * a->m[5] * a->m[15] + a->m[8] * a->m[7] * a->m[13] + a->m[12] * a->m[5] * a->m[11] - a->m[12] * a->m[7] * a->m[9];
-		inv[12] = -a->m[4] * a->m[9] * a->m[14] + a->m[4] * a->m[10] * a->m[13] + a->m[8] * a->m[5] * a->m[14] - a->m[8] * a->m[6] * a->m[13] - a->m[12] * a->m[5] * a->m[10] + a->m[12] * a->m[6] * a->m[9];
-		inv[1] = -a->m[1] * a->m[10] * a->m[15] + a->m[1] * a->m[11] * a->m[14] + a->m[9] * a->m[2] * a->m[15] - a->m[9] * a->m[3] * a->m[14] - a->m[13] * a->m[2] * a->m[11] + a->m[13] * a->m[3] * a->m[10];
-		inv[5] = a->m[0] * a->m[10] * a->m[15] - a->m[0] * a->m[11] * a->m[14] - a->m[8] * a->m[2] * a->m[15] + a->m[8] * a->m[3] * a->m[14] + a->m[12] * a->m[2] * a->m[11] - a->m[12] * a->m[3] * a->m[10];
-		inv[9] = -a->m[0] * a->m[9] * a->m[15] + a->m[0] * a->m[11] * a->m[13] + a->m[8] * a->m[1] * a->m[15] - a->m[8] * a->m[3] * a->m[13] - a->m[12] * a->m[1] * a->m[11] + a->m[12] * a->m[3] * a->m[9];
-		inv[13] = a->m[0] * a->m[9] * a->m[14] - a->m[0] * a->m[10] * a->m[13] - a->m[8] * a->m[1] * a->m[14] + a->m[8] * a->m[2] * a->m[13] + a->m[12] * a->m[1] * a->m[10] - a->m[12] * a->m[2] * a->m[9];
-		inv[2] = a->m[1] * a->m[6] * a->m[15] - a->m[1] * a->m[7] * a->m[14] - a->m[5] * a->m[2] * a->m[15] + a->m[5] * a->m[3] * a->m[14] + a->m[13] * a->m[2] * a->m[7] - a->m[13] * a->m[3] * a->m[6];
-		inv[6] = -a->m[0] * a->m[6] * a->m[15] + a->m[0] * a->m[7] * a->m[14] + a->m[4] * a->m[2] * a->m[15] - a->m[4] * a->m[3] * a->m[14] - a->m[12] * a->m[2] * a->m[7] + a->m[12] * a->m[3] * a->m[6];
-		inv[10] = a->m[0] * a->m[5] * a->m[15] - a->m[0] * a->m[7] * a->m[13] - a->m[4] * a->m[1] * a->m[15] + a->m[4] * a->m[3] * a->m[13] + a->m[12] * a->m[1] * a->m[7] - a->m[12] * a->m[3] * a->m[5];
-		inv[14] = -a->m[0] * a->m[5] * a->m[14] + a->m[0] * a->m[6] * a->m[13] + a->m[4] * a->m[1] * a->m[14] - a->m[4] * a->m[2] * a->m[13] - a->m[12] * a->m[1] * a->m[6] + a->m[12] * a->m[2] * a->m[5];
-		inv[3] = -a->m[1] * a->m[6] * a->m[11] + a->m[1] * a->m[7] * a->m[10] + a->m[5] * a->m[2] * a->m[11] - a->m[5] * a->m[3] * a->m[10] - a->m[9] * a->m[2] * a->m[7] + a->m[9] * a->m[3] * a->m[6];
-		inv[7] = a->m[0] * a->m[6] * a->m[11] - a->m[0] * a->m[7] * a->m[10] - a->m[4] * a->m[2] * a->m[11] + a->m[4] * a->m[3] * a->m[10] + a->m[8] * a->m[2] * a->m[7] - a->m[8] * a->m[3] * a->m[6];
-		inv[11] = -a->m[0] * a->m[5] * a->m[11] + a->m[0] * a->m[7] * a->m[9] + a->m[4] * a->m[1] * a->m[11] - a->m[4] * a->m[3] * a->m[9] - a->m[8] * a->m[1] * a->m[7] + a->m[8] * a->m[3] * a->m[5];
-		inv[15] = a->m[0] * a->m[5] * a->m[10] - a->m[0] * a->m[6] * a->m[9] - a->m[4] * a->m[1] * a->m[10] + a->m[4] * a->m[2] * a->m[9] + a->m[8] * a->m[1] * a->m[6] - a->m[8] * a->m[2] * a->m[5];
+		inv[0] = a.m[5] * a.m[10] * a.m[15] - a.m[5] * a.m[11] * a.m[14] - a.m[9] * a.m[6] * a.m[15] + a.m[9] * a.m[7] * a.m[14] + a.m[13] * a.m[6] * a.m[11] - a.m[13] * a.m[7] * a.m[10];
+		inv[4] = -a.m[4] * a.m[10] * a.m[15] + a.m[4] * a.m[11] * a.m[14] + a.m[8] * a.m[6] * a.m[15] - a.m[8] * a.m[7] * a.m[14] - a.m[12] * a.m[6] * a.m[11] + a.m[12] * a.m[7] * a.m[10];
+		inv[8] = a.m[4] * a.m[9] * a.m[15] - a.m[4] * a.m[11] * a.m[13] - a.m[8] * a.m[5] * a.m[15] + a.m[8] * a.m[7] * a.m[13] + a.m[12] * a.m[5] * a.m[11] - a.m[12] * a.m[7] * a.m[9];
+		inv[12] = -a.m[4] * a.m[9] * a.m[14] + a.m[4] * a.m[10] * a.m[13] + a.m[8] * a.m[5] * a.m[14] - a.m[8] * a.m[6] * a.m[13] - a.m[12] * a.m[5] * a.m[10] + a.m[12] * a.m[6] * a.m[9];
+		inv[1] = -a.m[1] * a.m[10] * a.m[15] + a.m[1] * a.m[11] * a.m[14] + a.m[9] * a.m[2] * a.m[15] - a.m[9] * a.m[3] * a.m[14] - a.m[13] * a.m[2] * a.m[11] + a.m[13] * a.m[3] * a.m[10];
+		inv[5] = a.m[0] * a.m[10] * a.m[15] - a.m[0] * a.m[11] * a.m[14] - a.m[8] * a.m[2] * a.m[15] + a.m[8] * a.m[3] * a.m[14] + a.m[12] * a.m[2] * a.m[11] - a.m[12] * a.m[3] * a.m[10];
+		inv[9] = -a.m[0] * a.m[9] * a.m[15] + a.m[0] * a.m[11] * a.m[13] + a.m[8] * a.m[1] * a.m[15] - a.m[8] * a.m[3] * a.m[13] - a.m[12] * a.m[1] * a.m[11] + a.m[12] * a.m[3] * a.m[9];
+		inv[13] = a.m[0] * a.m[9] * a.m[14] - a.m[0] * a.m[10] * a.m[13] - a.m[8] * a.m[1] * a.m[14] + a.m[8] * a.m[2] * a.m[13] + a.m[12] * a.m[1] * a.m[10] - a.m[12] * a.m[2] * a.m[9];
+		inv[2] = a.m[1] * a.m[6] * a.m[15] - a.m[1] * a.m[7] * a.m[14] - a.m[5] * a.m[2] * a.m[15] + a.m[5] * a.m[3] * a.m[14] + a.m[13] * a.m[2] * a.m[7] - a.m[13] * a.m[3] * a.m[6];
+		inv[6] = -a.m[0] * a.m[6] * a.m[15] + a.m[0] * a.m[7] * a.m[14] + a.m[4] * a.m[2] * a.m[15] - a.m[4] * a.m[3] * a.m[14] - a.m[12] * a.m[2] * a.m[7] + a.m[12] * a.m[3] * a.m[6];
+		inv[10] = a.m[0] * a.m[5] * a.m[15] - a.m[0] * a.m[7] * a.m[13] - a.m[4] * a.m[1] * a.m[15] + a.m[4] * a.m[3] * a.m[13] + a.m[12] * a.m[1] * a.m[7] - a.m[12] * a.m[3] * a.m[5];
+		inv[14] = -a.m[0] * a.m[5] * a.m[14] + a.m[0] * a.m[6] * a.m[13] + a.m[4] * a.m[1] * a.m[14] - a.m[4] * a.m[2] * a.m[13] - a.m[12] * a.m[1] * a.m[6] + a.m[12] * a.m[2] * a.m[5];
+		inv[3] = -a.m[1] * a.m[6] * a.m[11] + a.m[1] * a.m[7] * a.m[10] + a.m[5] * a.m[2] * a.m[11] - a.m[5] * a.m[3] * a.m[10] - a.m[9] * a.m[2] * a.m[7] + a.m[9] * a.m[3] * a.m[6];
+		inv[7] = a.m[0] * a.m[6] * a.m[11] - a.m[0] * a.m[7] * a.m[10] - a.m[4] * a.m[2] * a.m[11] + a.m[4] * a.m[3] * a.m[10] + a.m[8] * a.m[2] * a.m[7] - a.m[8] * a.m[3] * a.m[6];
+		inv[11] = -a.m[0] * a.m[5] * a.m[11] + a.m[0] * a.m[7] * a.m[9] + a.m[4] * a.m[1] * a.m[11] - a.m[4] * a.m[3] * a.m[9] - a.m[8] * a.m[1] * a.m[7] + a.m[8] * a.m[3] * a.m[5];
+		inv[15] = a.m[0] * a.m[5] * a.m[10] - a.m[0] * a.m[6] * a.m[9] - a.m[4] * a.m[1] * a.m[10] + a.m[4] * a.m[2] * a.m[9] + a.m[8] * a.m[1] * a.m[6] - a.m[8] * a.m[2] * a.m[5];
 
-		det = a->m[0] * inv[0] + a->m[1] * inv[4] + a->m[2] * inv[8] + a->m[3] * inv[12];
+		det = a.m[0] * inv[0] + a.m[1] * inv[4] + a.m[2] * inv[8] + a.m[3] * inv[12];
 		if (det == 0) return *a;
 		det = 1.f / det;
 
