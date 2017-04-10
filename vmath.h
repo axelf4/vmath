@@ -359,39 +359,33 @@ extern "C" {
 	 * @return A new ::VECTOR from the supplied angles.
 	 */
 	VMATH_INLINE VECTOR QuaternionRotationRollPitchYaw(float pitch, float yaw, float roll) {
-		// Assuming the angles are in radians.
-		const float hr = roll * 0.5f;
-		const float shr = (float) sin(hr);
-		const float chr = (float) cos(hr);
-		const float hp = pitch * 0.5f;
-		const float shp = (float) sin(hp);
-		const float chp = (float) cos(hp);
-		const float hy = yaw * 0.5f;
-		const float shy = (float) sin(hy);
-		const float chy = (float) cos(hy);
-		const float chy_shp = chy * shp;
-		const float shy_chp = shy * chp;
-		const float chy_chp = chy * chp;
-		const float shy_shp = shy * shp;
-
+		const float c1 = cos(pitch * 0.5),
+			  s1 = sin(pitch * 0.5),
+			  c2 = cos(yaw * 0.5),
+			  s2 = sin(yaw * 0.5),
+			  c3 = cos(roll * 0.5),
+			  s3 = sin(roll * 0.5);
 #ifdef VMATH_SSE_INTRINSICS
-		return _mm_setr_ps((chy_shp * chr) + (shy_chp * shr), (shy_chp * chr) - (chy_shp * shr), (chy_chp * shr) - (shy_shp * chr), (chy_chp * chr) + (shy_shp * shr));
+		return _mm_setr_ps(c2 * s1 * c3 + s2 * c1 * s3,
+				s2 * c1 * c3 - c2 * s1 * s3,
+				c2 * c1 * s3 - s2 * s1 * c3,
+				c2 * c1 * c3 + s2 * s1 * s3);
 #else
-		VECTOR v = { (chy_shp * chr) + (shy_chp * shr), // cos(yaw/2) * sin(pitch/2) * cos(roll/2) + sin(yaw/2) * cos(pitch/2) * sin(roll/2)
-			(shy_chp * chr) - (chy_shp * shr), // sin(yaw/2) * cos(pitch/2) * cos(roll/2) - cos(yaw/2) * sin(pitch/2) * sin(roll/2)
-			(chy_chp * shr) - (shy_shp * chr), // cos(yaw/2) * cos(pitch/2) * sin(roll/2) - sin(yaw/2) * sin(pitch/2) * cos(roll/2)
-			(chy_chp * chr) + (shy_shp * shr) }; // cos(yaw/2) * cos(pitch/2) * cos(roll/2) + sin(yaw/2) * sin(pitch/2) * sin(roll/2)
-		return v;
+		VECTOR q = { c2 * s1 * c3 + s2 * c1 * s3,
+			s2 * c1 * c3 - c2 * s1 * s3,
+			c2 * c1 * s3 - s2 * s1 * c3,
+			c2 * c1 * c3 + s2 * s1 * s3 };
+		return q;
 #endif
 	}
 
-	/** A 4x4 matrix. */
+	/** A 4x4 column-major matrix. */
 	typedef struct ALIGN(16) {
 #ifdef VMATH_SSE_INTRINSICS
-			__m128 row0, /**< The first row. */
-				   row1, /**< The second row. */
-				   row2, /**< The third row. */
-				   row3; /**< The fourth row. */
+			__m128 row0, /**< The first column. */
+				   row1, /**< The second column. */
+				   row2, /**< The third column. */
+				   row3; /**< The fourth column. */
 #else
 			float m[16]; /**< The components of the matrix. */
 #endif
@@ -691,6 +685,7 @@ extern "C" {
 		__m128 t = _mm_move_ss(_mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 1, 0, 3)), _mm_set1_ps(1));
 		MATRIX m = { _mm_setr_ps(1, 0, 0, 0), _mm_setr_ps(0, 1, 0, 0), _mm_setr_ps(0, 0, 1, 0), _mm_shuffle_ps(t, t, _MM_SHUFFLE(0, 3, 2, 1)) };
 #else
+		// TODO
 		MATRIX m = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, v.v[0], v.v[1], v.v[2], v.v[3] };
 #endif
 		return m;
@@ -714,28 +709,25 @@ extern "C" {
 
 	/**
 	 * Builds a rotation matrix from the quaternion \a a.
-	 * @param a Quaternion defining the rotation.
+	 * @param a quaternion defining the rotation.
 	 * @return The rotation matrix.
 	 */
 	VMATH_INLINE MATRIX MatrixRotationQuaternion(VECTOR a) {
-		ALIGN(128) float q[4];
+		ALIGN(16) float q[4];
 		VectorGet(q, a);
-		float qxx = q[0] * q[0];
-		float qyy = q[1] * q[1];
-		float qzz = q[2] * q[2];
-		float qxz = q[0] * q[2];
-		float qxy = q[0] * q[1];
-		float qyz = q[1] * q[2];
-		float qwx = q[3] * q[0];
-		float qwy = q[3] * q[1];
-		float qwz = q[3] * q[2];
+		const float xs = 2 * q[0], ys = 2 * q[1], zs = 2 * q[2],
+		wx = q[3] * xs, wy = q[3] * ys, wz = q[3] * zs,
+		xx = q[0] * xs, xy = q[0] * ys, xz = q[0] * zs,
+		yy = q[1] * ys, yz = q[1] * zs, zz = q[2] * zs;
 #ifdef VMATH_SSE_INTRINSICS
-		MATRIX m = { _mm_setr_ps(1 - 2 * (qyy + qzz), 2 * (qxy + qwz), 2 * (qxz - qwy), 0),
-			_mm_setr_ps(2 * (qxy - qwz), 1 - 2 * (qxx + qzz), 2 * (qyz + qwx), 0),
-			_mm_setr_ps(2 * (qxz + qwy), 2 * (qyz - qwx), 1 - 2 * (qxx + qyy), 0),
-			_mm_setr_ps(0, 0, 0, 1) };
+		MATRIX m = {
+			_mm_setr_ps(1 - (yy + zz), xy + wz, xz - wy, 0),
+			_mm_setr_ps(xy - wz, 1 - (xx + zz), yz + wx, 0),
+			_mm_setr_ps(xz + wy, yz - wx, 1 - (xx + yy), 0),
+			_mm_setr_ps(0, 0, 0, 1)
+		};
 #else
-		MATRIX m = { 1 - 2 * (qyy + qzz), 2 * (qxy + qwz), 2 * (qxz - qwy), 0, 2 * (qxy - qwz), 1 - 2 * (qxx + qzz), 2 * (qyz + qwx), 0, 2 * (qxz + qwy), 2 * (qyz - qwx), 1 - 2 * (qxx + qyy), 0, 0, 0, 0, 1 };
+		MATRIX m = { 1 - (yy + zz), xy + wz, xz - wy, 0, xy - wz, 1 - (xx + zz), yz + wx, 0, xz + wy, yz - wx, 1 - (xx + yy), 0, 0, 0, 0, 1 };
 #endif
 		return m;
 	}
