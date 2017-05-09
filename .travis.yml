@@ -5,7 +5,7 @@ addons:
         packages:
         - libgtest-dev
 env:
-    - CXXFLAGS=-DVMATH_TEST_NO_INTRINSICS=ON
+    - CXXFLAGS=-DVMATH_NO_INTRINSICS
     - CXXFLAGS=-msse
     - CXXFLAGS="-msse -msse2"
     - CXXFLAGS="-msse -msse2 -msse3"

@@ -65,8 +65,8 @@ namespace {
 		EXPECT_FLOAT_EQ(Vector3Dot(VectorSet(1, 2, 3, 4), VectorSet(5, 6, 7, 8)), 1 * 5 + 2 * 6 + 3 * 7) << "Wrong dot product.";
 	}
 
-	TEST(Vector, Vector3Cross_simpleValues_Calculated) {
-		EXPECT_TRUE(VectorEqual(Vector3Cross(VectorSet(1, 2, 3, 4), VectorSet(5, 6, 7, 8)), VectorSet(-4, 8, -4, 0)) == 0xF) << "The cross product of the vector differs.";
+	TEST(Vector, VectorCross_simpleValues_Calculated) {
+		EXPECT_TRUE(VectorEqual(VectorCross(VectorSet(1, 2, 3, 4), VectorSet(5, 6, 7, 8)), VectorSet(-4, 8, -4, 0)) == 0xF) << "The cross product of the vectors differs.";
 	}
 
 	TEST(Vector, Vector3Length_simpleValues_Calculated) {
@@ -127,14 +127,17 @@ namespace {
 	}
 
 	TEST(Matrix, MatrixMultiply_simpleValues_Calculated) {
-		MATRIX m1 = MatrixSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), m2 = MatrixSet(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
-		MATRIX a = MatrixMultiply(m1, m2), b = MatrixSet(80, 70, 60, 50, 240, 214, 188, 162, 400, 358, 316, 274, 560, 502, 444, 386);
-		EXPECT_TRUE(MatrixEqual(&a, &b) == 0xFFFF);
+		MATRIX a = MatrixSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), b = MatrixSet(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1), result = MatrixMultiply(a, b), expected = MatrixSet(386, 444, 502, 560, 274, 316, 358, 400, 162, 188, 214, 240, 50, 60, 70, 80);
+		EXPECT_TRUE(MatrixEqual(&result, &expected) == 0xFFFF);
 	}
 
 	TEST(Matrix, MatrixInverse_simpleValues_Calculated) {
-		MATRIX a = MatrixSet(2, 3, 1, 5, 1, 0, 3, 1, 0, 2, -3, 2, 0, 2, 3, 1), b = MatrixSet(18, -35, -28, 1, 9, -18, -14, 1, -2, 4, 3, 0, -12, 24, 19, -1);
-		MATRIX inverse = MatrixInverse(a);
+		MATRIX a = MatrixSet(2, 3, 1, 5, 1, 0, 3, 1, 0, 2, -3, 2, 0, 2, 3, 1), b = MatrixSet(18, -35, -28, 1, 9, -18, -14, 1, -2, 4, 3, 0, -12, 24, 19, -1), inverse = MatrixInverse(a);
 		EXPECT_TRUE(matricesEqual(&inverse, &b));
+	}
+
+	TEST(Matrix, MatrixTranslation_simpleValues_Calculated) {
+		MATRIX a = MatrixTranslation(1, 2, 3), b = MatrixSet(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 2, 3, 1);
+		EXPECT_TRUE(MatrixEqual(&a, &b) == 0xFFFF);
 	}
 }

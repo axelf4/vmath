@@ -12,11 +12,6 @@ endif()
 
 option(BUILD_TESTS "Build unit tests" OFF)
 if(BUILD_TESTS)
-	option(VMATH_TEST_NO_INTRINSICS "Enable/Disable intrinsics in tests" OFF)
-	if(VMATH_TEST_NO_INTRINSICS)
-		add_definitions(-DVMATH_NO_INTRINSICS=1)
-	endif()
-
 	find_package(Threads REQUIRED)
 	find_package(GTest REQUIRED)
 	include_directories(${GTEST_INCLUDE_DIRS})

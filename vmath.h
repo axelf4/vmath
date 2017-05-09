@@ -10,7 +10,6 @@
 extern "C" {
 #endif
 
-#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
@@ -62,11 +61,6 @@ extern "C" {
 #ifndef _MM_SHUFFLE
 #define _MM_SHUFFLE(z, y, x, w) (((z) << 6) | ((y) << 4) | ((x) << 2) | (w))
 #endif
-#define _mm_replicate_x_ps(v) _mm_shuffle_ps((v), (v), 0x00)
-#define _mm_replicate_y_ps(v) _mm_shuffle_ps((v), (v), 0x55)
-#define _mm_replicate_z_ps(v) _mm_shuffle_ps((v), (v), 0xAA)
-#define _mm_replicate_w_ps(v) _mm_shuffle_ps((v), (v), 0xFF)
-#define _mm_madd_ps(a, b, c) _mm_add_ps(_mm_mul_ps((a), (b)), (c)) /** (a * b + c) */
 #endif
 
 #ifndef M_PI
@@ -74,29 +68,12 @@ extern "C" {
 #define M_PI 3.141592654f
 #endif
 
-#define M_00 0 /**< XX. */
-#define M_01 1 /**< XY. */
-#define M_02 2 /**< XZ. */
-#define M_03 3 /**< XW. */
-#define M_10 4 /**< YX. */
-#define M_11 5 /**< YY. */
-#define M_12 6 /**< YZ. */
-#define M_13 7 /**< YW. */
-#define M_20 8 /**< ZX. */
-#define M_21 9 /**< ZY. */
-#define M_22 10 /**< ZZ. */
-#define M_23 11 /**< ZW. */
-#define M_30 12 /**< WX. */
-#define M_31 13 /**< WY. */
-#define M_32 14 /**< WZ. */
-#define M_33 15 /**< WW. */
-
 	/** A vector of four 32-bit floating-point components. */
 	typedef
 #ifdef VMATH_SSE_INTRINSICS
 		__m128
 #else
-		struct ALIGN(16) {
+		struct {
 			/** The components of the vector. */
 			float v[4];
 		}
@@ -128,7 +105,7 @@ extern "C" {
 #endif
 	}
 
-/** A null/zero vector with the length 0 (*0*). */
+/** A null/zero vector with the length 0. */
 #ifdef VMATH_SSE_INTRINSICS
 #define ZERO_VECTOR _mm_setzero_ps()
 #else
@@ -254,7 +231,7 @@ extern "C" {
 	/**
 	 * Returns the cross product, a.k.a. the vector product, of the two vectors \a a and \a b.
 	 */
-	VMATH_INLINE VECTOR Vector3Cross(VECTOR a, VECTOR b) {
+	VMATH_INLINE VECTOR VectorCross(VECTOR a, VECTOR b) {
 #ifdef VMATH_SSE_INTRINSICS
 		return _mm_sub_ps(_mm_mul_ps(_mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 1, 0, 2))), _mm_mul_ps(_mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 1, 0, 2)), _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 2, 1))));
 #else
@@ -379,17 +356,14 @@ extern "C" {
 #endif
 	}
 
-	/** A 4x4 column-major matrix. */
+	/** A 4x4 matrix. */
 	typedef struct ALIGN(16) {
 #ifdef VMATH_SSE_INTRINSICS
-			__m128 row0, /**< The first column. */
-				   row1, /**< The second column. */
-				   row2, /**< The third column. */
-				   row3; /**< The fourth column. */
+		__m128 r[4]; /**< The rows of the matrix. */
 #else
-			float m[16]; /**< The components of the matrix. */
+		float m[16]; /**< The components of the matrix. */
 #endif
-		} MATRIX;
+	} MATRIX;
 
 	/**
 	 * Stores a representation of the matrix \a _A in the float array \a _V and returns \a _V.
@@ -400,19 +374,36 @@ extern "C" {
 	 * The matrix is not passed as a pointer, contrary to the rest of the matrix functions.
 	 */
 #ifdef VMATH_SSE_INTRINSICS
-#define MatrixGet(_V, _A) (_mm_store_ps((_V), (_A).row0), _mm_store_ps((_V) + 4, (_A).row1), _mm_store_ps((_V) + 8, (_A).row2), _mm_store_ps((_V) + 12, (_A).row3), (_V))
+#define MatrixGet(_V, _A) (_mm_store_ps((_V), (_A).r[0]), _mm_store_ps((_V) + 4, (_A).r[1]), _mm_store_ps((_V) + 8, (_A).r[2]), _mm_store_ps((_V) + 12, (_A).r[3]), (_V))
 #else
 #define MatrixGet(_V, _A) (memcpy((_V), (_A).m, sizeof(float) * 16), (_V))
 #endif
 
 	/**
-	 * Returns a new ::MATRIX from the specified components.
+	 * Creates a matrix from the specified components.
+	 * @param m00 Element in column 0, row 0.
+	 * @param m01 Element in column 0, row 1.
+	 * @param m02 Element in column 0, row 2.
+	 * @param m03 Element in column 0, row 3.
+	 * @param m10 Element in column 1, row 0.
+	 * @param m11 Element in column 1, row 1.
+	 * @param m12 Element in column 1, row 2.
+	 * @param m13 Element in column 1, row 3.
+	 * @param m20 Element in column 2, row 0.
+	 * @param m21 Element in column 2, row 1.
+	 * @param m22 Element in column 2, row 2.
+	 * @param m23 Element in column 2, row 3.
+	 * @param m30 Element in column 3, row 0.
+	 * @param m31 Element in column 3, row 1.
+	 * @param m32 Element in column 3, row 2.
+	 * @param m33 Element in column 3, row 3.
+	 * @return The new matrix.
 	 */
-	VMATH_INLINE MATRIX MatrixSet(float m00, float m10, float m20, float m30, float m01, float m11, float m21, float m31, float m02, float m12, float m22, float m32, float m03, float m13, float m23, float m33) {
+	VMATH_INLINE MATRIX MatrixSet(float m00, float m01, float m02, float m03, float m10, float m11, float m12, float m13, float m20, float m21, float m22, float m23, float m30, float m31, float m32, float m33) {
 #ifdef VMATH_SSE_INTRINSICS
-		MATRIX m = { _mm_set_ps(m30, m20, m10, m00), _mm_set_ps(m31, m21, m11, m01), _mm_set_ps(m32, m22, m12, m02), _mm_set_ps(m33, m23, m13, m03) };
+		MATRIX m = { _mm_setr_ps(m00, m01, m02, m03), _mm_setr_ps(m10, m11, m12, m13), _mm_setr_ps(m20, m21, m22, m23), _mm_setr_ps(m30, m31, m32, m33) };
 #else
-		MATRIX m = { m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33 };
+		MATRIX m = { m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33 };
 #endif
 		return m;
 	}
@@ -432,7 +423,7 @@ extern "C" {
 	}
 
 	/**
-	 * Returns the identity matrix.
+	 * Builds the identity matrix.
 	 * @return The identity matrix.
 	 */
 	VMATH_INLINE MATRIX MatrixIdentity() {
@@ -440,6 +431,175 @@ extern "C" {
 		MATRIX m = { _mm_set_ps(0, 0, 0, 1), _mm_set_ps(0, 0, 1, 0), _mm_set_ps(0, 1, 0, 0), _mm_set_ps(1, 0, 0, 0) };
 #else
 		MATRIX m = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+#endif
+		return m;
+	}
+
+	/**
+	 * Computes the product of two matrices.
+	 * @param a The first matrix to multiply.
+	 * @param b The second matrix to multiply.
+	 * @return The product of the two matrices.
+	 * @warning The two matrices must be distinct, the result will be incorrect if \a a equals \a b.
+	 */
+	VMATH_INLINE MATRIX MatrixMultiply(MATRIX a, MATRIX b) {
+#ifdef VMATH_SSE_INTRINSICS
+		MATRIX m = {
+			_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[0], b.r[0], 0x00), a.r[0]),
+					_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[0], b.r[0], 0x55), a.r[1]),
+						_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[0], b.r[0], 0xAA), a.r[2]),
+							_mm_mul_ps(_mm_shuffle_ps(b.r[0], b.r[0], 0xFF), a.r[3])))),
+			_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[1], b.r[1], 0x00), a.r[0]),
+					_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[1], b.r[1], 0x55), a.r[1]),
+						_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[1], b.r[1], 0xAA), a.r[2]),
+							_mm_mul_ps(_mm_shuffle_ps(b.r[1], b.r[1], 0xFF), a.r[3])))),
+			_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[2], b.r[2], 0x00), a.r[0]),
+					_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[2], b.r[2], 0x55), a.r[1]),
+						_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[2], b.r[2], 0xAA), a.r[2]),
+							_mm_mul_ps(_mm_shuffle_ps(b.r[2], b.r[2], 0xFF), a.r[3])))),
+			_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[3], b.r[3], 0x00), a.r[0]),
+					_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[3], b.r[3], 0x55), a.r[1]),
+						_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(b.r[3], b.r[3], 0xAA), a.r[2]),
+							_mm_mul_ps(_mm_shuffle_ps(b.r[3], b.r[3], 0xFF), a.r[3]))))
+		};
+#else
+		MATRIX m = {
+			b.m[0] * a.m[0] + b.m[1] * a.m[4] + b.m[2] * a.m[8] + b.m[3] * a.m[12],
+			b.m[0] * a.m[1] + b.m[1] * a.m[5] + b.m[2] * a.m[9] + b.m[3] * a.m[13],
+			b.m[0] * a.m[2] + b.m[1] * a.m[6] + b.m[2] * a.m[10] + b.m[3] * a.m[14],
+			b.m[0] * a.m[3] + b.m[1] * a.m[7] + b.m[2] * a.m[11] + b.m[3] * a.m[15],
+			b.m[4] * a.m[0] + b.m[5] * a.m[4] + b.m[6] * a.m[8] + b.m[7] * a.m[12],
+			b.m[4] * a.m[1] + b.m[5] * a.m[5] + b.m[6] * a.m[9] + b.m[7] * a.m[13],
+			b.m[4] * a.m[2] + b.m[5] * a.m[6] + b.m[6] * a.m[10] + b.m[7] * a.m[14],
+			b.m[4] * a.m[3] + b.m[5] * a.m[7] + b.m[6] * a.m[11] + b.m[7] * a.m[15],
+			b.m[8] * a.m[0] + b.m[9] * a.m[4] + b.m[10] * a.m[8] + b.m[11] * a.m[12],
+			b.m[8] * a.m[1] + b.m[9] * a.m[5] + b.m[10] * a.m[9] + b.m[11] * a.m[13],
+			b.m[8] * a.m[2] + b.m[9] * a.m[6] + b.m[10] * a.m[10] + b.m[11] * a.m[14],
+			b.m[8] * a.m[3] + b.m[9] * a.m[7] + b.m[10] * a.m[11] + b.m[11] * a.m[15],
+			b.m[12] * a.m[0] + b.m[13] * a.m[4] + b.m[14] * a.m[8] + b.m[15] * a.m[12],
+			b.m[12] * a.m[1] + b.m[13] * a.m[5] + b.m[14] * a.m[9] + b.m[15] * a.m[13],
+			b.m[12] * a.m[2] + b.m[13] * a.m[6] + b.m[14] * a.m[10] + b.m[15] * a.m[14],
+			b.m[12] * a.m[3] + b.m[13] * a.m[7] + b.m[14] * a.m[11] + b.m[15] * a.m[15]
+		};
+#endif
+		return m;
+	}
+
+	/**
+	 * Computes the transpose of a matrix.
+	 * @param a The matrix to transpose.
+	 * @return The transpose of \a a.
+	 */
+	VMATH_INLINE MATRIX MatrixTranspose(MATRIX a) {
+#ifdef VMATH_SSE_INTRINSICS
+		__m128 tmp0 = _mm_unpacklo_ps(a.r[0], a.r[1]),
+			   tmp2 = _mm_unpacklo_ps(a.r[2], a.r[3]),
+			   tmp1 = _mm_unpackhi_ps(a.r[0], a.r[1]),
+			   tmp3 = _mm_unpackhi_ps(a.r[2], a.r[3]);
+		MATRIX m = { _mm_movelh_ps(tmp0, tmp2), _mm_movehl_ps(tmp2, tmp0), _mm_movelh_ps(tmp1, tmp3), _mm_movehl_ps(tmp3, tmp1) };
+#else
+		MATRIX m = { a.m[0], a.m[4], a.m[8], a.m[12], a.m[1], a.m[5], a.m[9], a.m[13], a.m[2], a.m[6], a.m[10], a.m[14], a.m[3], a.m[7], a.m[11], a.m[15] };
+#endif
+		return m;
+	}
+
+	/**
+	 * Inverses the matrix \a a using Cramer's rule.
+	 * @param a The matrix to inverse.
+	 * @return The inversed matrix \a a.
+	 */
+	VMATH_INLINE MATRIX MatrixInverse(MATRIX a) {
+#ifdef VMATH_SSE_INTRINSICS
+		__m128 minor0, minor1, minor2, minor3, row0, row1, row2, row3, det, tmp;
+		a = MatrixTranspose(a);
+		row0 = a.r[0];
+		row1 = _mm_shuffle_ps(a.r[1], a.r[1], 0x4E);
+		row2 = a.r[2];
+		row3 = _mm_shuffle_ps(a.r[3], a.r[3], 0x4E);
+
+		tmp = _mm_mul_ps(row2, row3);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
+		minor0 = _mm_mul_ps(row1, tmp);
+		minor1 = _mm_mul_ps(row0, tmp);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
+		minor0 = _mm_sub_ps(_mm_mul_ps(row1, tmp), minor0);
+		minor1 = _mm_sub_ps(_mm_mul_ps(row0, tmp), minor1);
+		minor1 = _mm_shuffle_ps(minor1, minor1, 0x4E);
+
+		tmp = _mm_mul_ps(row1, row2);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
+		minor0 = _mm_add_ps(_mm_mul_ps(row3, tmp), minor0);
+		minor3 = _mm_mul_ps(row0, tmp);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
+		minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row3, tmp));
+		minor3 = _mm_sub_ps(_mm_mul_ps(row0, tmp), minor3);
+		minor3 = _mm_shuffle_ps(minor3, minor3, 0x4E);
+
+		tmp = _mm_mul_ps(_mm_shuffle_ps(row1, row1, 0x4E), row3);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
+		row2 = _mm_shuffle_ps(row2, row2, 0x4E);
+		minor0 = _mm_add_ps(_mm_mul_ps(row2, tmp), minor0);
+		minor2 = _mm_mul_ps(row0, tmp);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
+		minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row2, tmp));
+		minor2 = _mm_sub_ps(_mm_mul_ps(row0, tmp), minor2);
+		minor2 = _mm_shuffle_ps(minor2, minor2, 0x4E);
+
+		tmp = _mm_mul_ps(row0, row1);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
+		minor2 = _mm_add_ps(_mm_mul_ps(row3, tmp), minor2);
+		minor3 = _mm_sub_ps(_mm_mul_ps(row2, tmp), minor3);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
+		minor2 = _mm_sub_ps(_mm_mul_ps(row3, tmp), minor2);
+		minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row2, tmp));
+
+		tmp = _mm_mul_ps(row0, row3);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
+		minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row2, tmp));
+		minor2 = _mm_add_ps(_mm_mul_ps(row1, tmp), minor2);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
+		minor1 = _mm_add_ps(_mm_mul_ps(row2, tmp), minor1);
+		minor2 = _mm_sub_ps(minor2, _mm_mul_ps(row1, tmp));
+
+		tmp = _mm_mul_ps(row0, row2);
+		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
+		minor1 = _mm_add_ps(_mm_mul_ps(row3, tmp), minor1);
+		minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row1, tmp));
+		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
+		minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row3, tmp));
+		minor3 = _mm_add_ps(_mm_mul_ps(row1, tmp), minor3);
+
+		det = _mm_mul_ps(row0, minor0);
+		det = _mm_add_ps(_mm_shuffle_ps(det, det, 0x4E), det);
+		det = _mm_add_ss(_mm_shuffle_ps(det, det, 0xB1), det);
+		tmp = _mm_rcp_ss(det);
+		det = _mm_sub_ss(_mm_add_ss(tmp, tmp), _mm_mul_ss(det, _mm_mul_ss(tmp, tmp)));
+		det = _mm_shuffle_ps(det, det, 0x00);
+		MATRIX m = { _mm_mul_ps(det, minor0), _mm_mul_ps(det, minor1), _mm_mul_ps(det, minor2), _mm_mul_ps(det, minor3) };
+#else
+		float inv[] = { a.m[5] * a.m[10] * a.m[15] - a.m[5] * a.m[11] * a.m[14] - a.m[9] * a.m[6] * a.m[15] + a.m[9] * a.m[7] * a.m[14] + a.m[13] * a.m[6] * a.m[11] - a.m[13] * a.m[7] * a.m[10],
+			-a.m[1] * a.m[10] * a.m[15] + a.m[1] * a.m[11] * a.m[14] + a.m[9] * a.m[2] * a.m[15] - a.m[9] * a.m[3] * a.m[14] - a.m[13] * a.m[2] * a.m[11] + a.m[13] * a.m[3] * a.m[10],
+			a.m[1] * a.m[6] * a.m[15] - a.m[1] * a.m[7] * a.m[14] - a.m[5] * a.m[2] * a.m[15] + a.m[5] * a.m[3] * a.m[14] + a.m[13] * a.m[2] * a.m[7] - a.m[13] * a.m[3] * a.m[6],
+			-a.m[1] * a.m[6] * a.m[11] + a.m[1] * a.m[7] * a.m[10] + a.m[5] * a.m[2] * a.m[11] - a.m[5] * a.m[3] * a.m[10] - a.m[9] * a.m[2] * a.m[7] + a.m[9] * a.m[3] * a.m[6],
+			-a.m[4] * a.m[10] * a.m[15] + a.m[4] * a.m[11] * a.m[14] + a.m[8] * a.m[6] * a.m[15] - a.m[8] * a.m[7] * a.m[14] - a.m[12] * a.m[6] * a.m[11] + a.m[12] * a.m[7] * a.m[10],
+			a.m[0] * a.m[10] * a.m[15] - a.m[0] * a.m[11] * a.m[14] - a.m[8] * a.m[2] * a.m[15] + a.m[8] * a.m[3] * a.m[14] + a.m[12] * a.m[2] * a.m[11] - a.m[12] * a.m[3] * a.m[10],
+			-a.m[0] * a.m[6] * a.m[15] + a.m[0] * a.m[7] * a.m[14] + a.m[4] * a.m[2] * a.m[15] - a.m[4] * a.m[3] * a.m[14] - a.m[12] * a.m[2] * a.m[7] + a.m[12] * a.m[3] * a.m[6],
+			a.m[0] * a.m[6] * a.m[11] - a.m[0] * a.m[7] * a.m[10] - a.m[4] * a.m[2] * a.m[11] + a.m[4] * a.m[3] * a.m[10] + a.m[8] * a.m[2] * a.m[7] - a.m[8] * a.m[3] * a.m[6],
+			a.m[4] * a.m[9] * a.m[15] - a.m[4] * a.m[11] * a.m[13] - a.m[8] * a.m[5] * a.m[15] + a.m[8] * a.m[7] * a.m[13] + a.m[12] * a.m[5] * a.m[11] - a.m[12] * a.m[7] * a.m[9],
+			-a.m[0] * a.m[9] * a.m[15] + a.m[0] * a.m[11] * a.m[13] + a.m[8] * a.m[1] * a.m[15] - a.m[8] * a.m[3] * a.m[13] - a.m[12] * a.m[1] * a.m[11] + a.m[12] * a.m[3] * a.m[9],
+			a.m[0] * a.m[5] * a.m[15] - a.m[0] * a.m[7] * a.m[13] - a.m[4] * a.m[1] * a.m[15] + a.m[4] * a.m[3] * a.m[13] + a.m[12] * a.m[1] * a.m[7] - a.m[12] * a.m[3] * a.m[5],
+			-a.m[0] * a.m[5] * a.m[11] + a.m[0] * a.m[7] * a.m[9] + a.m[4] * a.m[1] * a.m[11] - a.m[4] * a.m[3] * a.m[9] - a.m[8] * a.m[1] * a.m[7] + a.m[8] * a.m[3] * a.m[5],
+			-a.m[4] * a.m[9] * a.m[14] + a.m[4] * a.m[10] * a.m[13] + a.m[8] * a.m[5] * a.m[14] - a.m[8] * a.m[6] * a.m[13] - a.m[12] * a.m[5] * a.m[10] + a.m[12] * a.m[6] * a.m[9],
+			a.m[0] * a.m[9] * a.m[14] - a.m[0] * a.m[10] * a.m[13] - a.m[8] * a.m[1] * a.m[14] + a.m[8] * a.m[2] * a.m[13] + a.m[12] * a.m[1] * a.m[10] - a.m[12] * a.m[2] * a.m[9],
+			-a.m[0] * a.m[5] * a.m[14] + a.m[0] * a.m[6] * a.m[13] + a.m[4] * a.m[1] * a.m[14] - a.m[4] * a.m[2] * a.m[13] - a.m[12] * a.m[1] * a.m[6] + a.m[12] * a.m[2] * a.m[5],
+			a.m[0] * a.m[5] * a.m[10] - a.m[0] * a.m[6] * a.m[9] - a.m[4] * a.m[1] * a.m[10] + a.m[4] * a.m[2] * a.m[9] + a.m[8] * a.m[1] * a.m[6] - a.m[8] * a.m[2] * a.m[5] };
+
+		float det = a.m[0] * inv[0] + a.m[1] * inv[4] + a.m[2] * inv[8] + a.m[3] * inv[12];
+		if (det == 0) return a;
+		det = 1.f / det;
+
+		MATRIX m;
+		for (int i = 0; i < 16; ++i) m.m[i] = inv[i] * det;
 #endif
 		return m;
 	}
@@ -470,193 +630,16 @@ extern "C" {
 	 * @param farVal The distance to the farther depth clipping plane.
 	 * @return The orthographic matrix.
 	 */
-	VMATH_INLINE MATRIX MatrixOrtho(float left, float right, float bottom, float top, float nearVal, float farVal) {
+	VMATH_INLINE MATRIX MatrixOrtho(float left, float right, float bottom, float top, float near, float far) {
 #ifdef VMATH_SSE_INTRINSICS
 		MATRIX m = { _mm_setr_ps(2 / (right - left), 0, 0, 0),
 			_mm_setr_ps(0, 2 / (top - bottom), 0, 0),
-			_mm_setr_ps(0, 0, -2 / (farVal - nearVal), 0),
-			_mm_setr_ps(-(right + left) / (right - left), -(top + bottom) / (top - bottom), -(farVal + nearVal) / (farVal - nearVal), 1) };
+			_mm_setr_ps(0, 0, -2 / (far - near), 0),
+			_mm_setr_ps(-(right + left) / (right - left), -(top + bottom) / (top - bottom), -(far + near) / (far - near), 1) };
 #else
-		MATRIX m = { 2 / (right - left), 0, 0, 0, 0, 2 / (top - bottom), 0, 0, 0, 0, -2 / (farVal - nearVal), 0, -(right + left) / (right - left), -(top + bottom) / (top - bottom), -(farVal + nearVal) / (farVal - nearVal), 1 };
+		MATRIX m = { 2 / (right - left), 0, 0, 0, 0, 2 / (top - bottom), 0, 0, 0, 0, -2 / (far - near), 0, -(right + left) / (right - left), -(top + bottom) / (top - bottom), -(far + near) / (far - near), 1 };
 #endif
 		return m;
-	}
-
-	/**
-	 * Multiplies the two matrices \a a and \a b (a * b).
-	 * @param a The first matrix to multiply.
-	 * @param b The second matrix to multiply.
-	 * @return The product of the two matrices.
-	 * @warning The two matrices must be distinct, the result will be incorrect if \a a or \a b are equal.
-	 */
-	VMATH_INLINE MATRIX MatrixMultiply(MATRIX a, MATRIX b) {
-#ifdef VMATH_SSE_INTRINSICS
-		__m128 row0, row1, row2, row3;
-
-		row0 = _mm_mul_ps(b.row0, _mm_replicate_x_ps(a.row0));
-		row1 = _mm_mul_ps(b.row0, _mm_replicate_x_ps(a.row1));
-		row2 = _mm_mul_ps(b.row0, _mm_replicate_x_ps(a.row2));
-		row3 = _mm_mul_ps(b.row0, _mm_replicate_x_ps(a.row3));
-
-		row0 = _mm_madd_ps(b.row1, _mm_replicate_y_ps(a.row0), row0);
-		row1 = _mm_madd_ps(b.row1, _mm_replicate_y_ps(a.row1), row1);
-		row2 = _mm_madd_ps(b.row1, _mm_replicate_y_ps(a.row2), row2);
-		row3 = _mm_madd_ps(b.row1, _mm_replicate_y_ps(a.row3), row3);
-
-		row0 = _mm_madd_ps(b.row2, _mm_replicate_z_ps(a.row0), row0);
-		row1 = _mm_madd_ps(b.row2, _mm_replicate_z_ps(a.row1), row1);
-		row2 = _mm_madd_ps(b.row2, _mm_replicate_z_ps(a.row2), row2);
-		row3 = _mm_madd_ps(b.row2, _mm_replicate_z_ps(a.row3), row3);
-
-		row0 = _mm_madd_ps(b.row3, _mm_replicate_w_ps(a.row0), row0);
-		row1 = _mm_madd_ps(b.row3, _mm_replicate_w_ps(a.row1), row1);
-		row2 = _mm_madd_ps(b.row3, _mm_replicate_w_ps(a.row2), row2);
-		row3 = _mm_madd_ps(b.row3, _mm_replicate_w_ps(a.row3), row3);
-
-		MATRIX m = { row0, row1, row2, row3 };
-		return m;
-#else
-		MATRIX result;
-		result.m[M_00] = a.m[M_00] * b.m[M_00] + a.m[M_01] * b.m[M_10] + a.m[M_02] * b.m[M_20] + a.m[M_03] * b.m[M_30];
-		result.m[M_01] = a.m[M_00] * b.m[M_01] + a.m[M_01] * b.m[M_11] + a.m[M_02] * b.m[M_21] + a.m[M_03] * b.m[M_31];
-		result.m[M_02] = a.m[M_00] * b.m[M_02] + a.m[M_01] * b.m[M_12] + a.m[M_02] * b.m[M_22] + a.m[M_03] * b.m[M_32];
-		result.m[M_03] = a.m[M_00] * b.m[M_03] + a.m[M_01] * b.m[M_13] + a.m[M_02] * b.m[M_23] + a.m[M_03] * b.m[M_33];
-		result.m[M_10] = a.m[M_10] * b.m[M_00] + a.m[M_11] * b.m[M_10] + a.m[M_12] * b.m[M_20] + a.m[M_13] * b.m[M_30];
-		result.m[M_11] = a.m[M_10] * b.m[M_01] + a.m[M_11] * b.m[M_11] + a.m[M_12] * b.m[M_21] + a.m[M_13] * b.m[M_31];
-		result.m[M_12] = a.m[M_10] * b.m[M_02] + a.m[M_11] * b.m[M_12] + a.m[M_12] * b.m[M_22] + a.m[M_13] * b.m[M_32];
-		result.m[M_13] = a.m[M_10] * b.m[M_03] + a.m[M_11] * b.m[M_13] + a.m[M_12] * b.m[M_23] + a.m[M_13] * b.m[M_33];
-		result.m[M_20] = a.m[M_20] * b.m[M_00] + a.m[M_21] * b.m[M_10] + a.m[M_22] * b.m[M_20] + a.m[M_23] * b.m[M_30];
-		result.m[M_21] = a.m[M_20] * b.m[M_01] + a.m[M_21] * b.m[M_11] + a.m[M_22] * b.m[M_21] + a.m[M_23] * b.m[M_31];
-		result.m[M_22] = a.m[M_20] * b.m[M_02] + a.m[M_21] * b.m[M_12] + a.m[M_22] * b.m[M_22] + a.m[M_23] * b.m[M_32];
-		result.m[M_23] = a.m[M_20] * b.m[M_03] + a.m[M_21] * b.m[M_13] + a.m[M_22] * b.m[M_23] + a.m[M_23] * b.m[M_33];
-		result.m[M_30] = a.m[M_30] * b.m[M_00] + a.m[M_31] * b.m[M_10] + a.m[M_32] * b.m[M_20] + a.m[M_33] * b.m[M_30];
-		result.m[M_31] = a.m[M_30] * b.m[M_01] + a.m[M_31] * b.m[M_11] + a.m[M_32] * b.m[M_21] + a.m[M_33] * b.m[M_31];
-		result.m[M_32] = a.m[M_30] * b.m[M_02] + a.m[M_31] * b.m[M_12] + a.m[M_32] * b.m[M_22] + a.m[M_33] * b.m[M_32];
-		result.m[M_33] = a.m[M_30] * b.m[M_03] + a.m[M_31] * b.m[M_13] + a.m[M_32] * b.m[M_23] + a.m[M_33] * b.m[M_33];
-		return result;
-#endif
-	}
-
-	/**
-	 * Transposes the matrix \a a (a<sup>T</sup>).
-	 * @param a The matrix to transpose.
-	 * @return The transposed matrix \a a.
-	 */
-	VMATH_INLINE MATRIX MatrixTranspose(MATRIX a) {
-#ifdef VMATH_SSE_INTRINSICS
-		__m128 tmp0 = _mm_unpacklo_ps(a.row0, a.row1),
-			   tmp2 = _mm_unpacklo_ps(a.row2, a.row3),
-			   tmp1 = _mm_unpackhi_ps(a.row0, a.row1),
-			   tmp3 = _mm_unpackhi_ps(a.row2, a.row3);
-		MATRIX m = { _mm_movelh_ps(tmp0, tmp2), _mm_movehl_ps(tmp2, tmp0), _mm_movelh_ps(tmp1, tmp3), _mm_movehl_ps(tmp3, tmp1) };
-		return m;
-#else
-		MATRIX m = { a.m[0], a.m[4], a.m[8], a.m[12], a.m[1], a.m[5], a.m[9], a.m[13], a.m[2], a.m[6], a.m[10], a.m[14], a.m[3], a.m[7], a.m[11], a.m[15] };
-		return m;
-#endif
-	}
-
-	/**
-	 * Inverses the matrix \a a using Cramer's rule (a<sup>-1</sup>).
-	 * @param a The matrix to inverse.
-	 * @return The inversed matrix \a a.
-	 */
-	VMATH_INLINE MATRIX MatrixInverse(MATRIX a) {
-#ifdef VMATH_SSE_INTRINSICS
-		__m128 minor0, minor1, minor2, minor3, row0, row1, row2, row3, det, tmp;
-		a = MatrixTranspose(a);
-		row0 = a.row0;
-		row1 = _mm_shuffle_ps(a.row1, a.row1, 0x4E);
-		row2 = a.row2;
-		row3 = _mm_shuffle_ps(a.row3, a.row3, 0x4E);
-		// -----------------------------------------------
-		tmp = _mm_mul_ps(row2, row3);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
-		minor0 = _mm_mul_ps(row1, tmp);
-		minor1 = _mm_mul_ps(row0, tmp);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
-		minor0 = _mm_sub_ps(_mm_mul_ps(row1, tmp), minor0);
-		minor1 = _mm_sub_ps(_mm_mul_ps(row0, tmp), minor1);
-		minor1 = _mm_shuffle_ps(minor1, minor1, 0x4E);
-		// -----------------------------------------------
-		tmp = _mm_mul_ps(row1, row2);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
-		minor0 = _mm_add_ps(_mm_mul_ps(row3, tmp), minor0);
-		minor3 = _mm_mul_ps(row0, tmp);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
-		minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row3, tmp));
-		minor3 = _mm_sub_ps(_mm_mul_ps(row0, tmp), minor3);
-		minor3 = _mm_shuffle_ps(minor3, minor3, 0x4E);
-		// -----------------------------------------------
-		tmp = _mm_mul_ps(_mm_shuffle_ps(row1, row1, 0x4E), row3);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
-		row2 = _mm_shuffle_ps(row2, row2, 0x4E);
-		minor0 = _mm_add_ps(_mm_mul_ps(row2, tmp), minor0);
-		minor2 = _mm_mul_ps(row0, tmp);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
-		minor0 = _mm_sub_ps(minor0, _mm_mul_ps(row2, tmp));
-		minor2 = _mm_sub_ps(_mm_mul_ps(row0, tmp), minor2);
-		minor2 = _mm_shuffle_ps(minor2, minor2, 0x4E);
-		// -----------------------------------------------
-		tmp = _mm_mul_ps(row0, row1);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
-		minor2 = _mm_add_ps(_mm_mul_ps(row3, tmp), minor2);
-		minor3 = _mm_sub_ps(_mm_mul_ps(row2, tmp), minor3);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
-		minor2 = _mm_sub_ps(_mm_mul_ps(row3, tmp), minor2);
-		minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row2, tmp));
-		// -----------------------------------------------
-		tmp = _mm_mul_ps(row0, row3);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
-		minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row2, tmp));
-		minor2 = _mm_add_ps(_mm_mul_ps(row1, tmp), minor2);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
-		minor1 = _mm_add_ps(_mm_mul_ps(row2, tmp), minor1);
-		minor2 = _mm_sub_ps(minor2, _mm_mul_ps(row1, tmp));
-		// -----------------------------------------------
-		tmp = _mm_mul_ps(row0, row2);
-		tmp = _mm_shuffle_ps(tmp, tmp, 0xB1);
-		minor1 = _mm_add_ps(_mm_mul_ps(row3, tmp), minor1);
-		minor3 = _mm_sub_ps(minor3, _mm_mul_ps(row1, tmp));
-		tmp = _mm_shuffle_ps(tmp, tmp, 0x4E);
-		minor1 = _mm_sub_ps(minor1, _mm_mul_ps(row3, tmp));
-		minor3 = _mm_add_ps(_mm_mul_ps(row1, tmp), minor3);
-		// -----------------------------------------------
-		det = _mm_mul_ps(row0, minor0);
-		det = _mm_add_ps(_mm_shuffle_ps(det, det, 0x4E), det);
-		det = _mm_add_ss(_mm_shuffle_ps(det, det, 0xB1), det);
-		tmp = _mm_rcp_ss(det);
-		det = _mm_sub_ss(_mm_add_ss(tmp, tmp), _mm_mul_ss(det, _mm_mul_ss(tmp, tmp)));
-		det = _mm_shuffle_ps(det, det, 0x00);
-		MATRIX m = { _mm_mul_ps(det, minor0), _mm_mul_ps(det, minor1), _mm_mul_ps(det, minor2), _mm_mul_ps(det, minor3) };
-		return m;
-#else
-		float inv[16], det;
-		inv[0] = a.m[5] * a.m[10] * a.m[15] - a.m[5] * a.m[11] * a.m[14] - a.m[9] * a.m[6] * a.m[15] + a.m[9] * a.m[7] * a.m[14] + a.m[13] * a.m[6] * a.m[11] - a.m[13] * a.m[7] * a.m[10];
-		inv[4] = -a.m[4] * a.m[10] * a.m[15] + a.m[4] * a.m[11] * a.m[14] + a.m[8] * a.m[6] * a.m[15] - a.m[8] * a.m[7] * a.m[14] - a.m[12] * a.m[6] * a.m[11] + a.m[12] * a.m[7] * a.m[10];
-		inv[8] = a.m[4] * a.m[9] * a.m[15] - a.m[4] * a.m[11] * a.m[13] - a.m[8] * a.m[5] * a.m[15] + a.m[8] * a.m[7] * a.m[13] + a.m[12] * a.m[5] * a.m[11] - a.m[12] * a.m[7] * a.m[9];
-		inv[12] = -a.m[4] * a.m[9] * a.m[14] + a.m[4] * a.m[10] * a.m[13] + a.m[8] * a.m[5] * a.m[14] - a.m[8] * a.m[6] * a.m[13] - a.m[12] * a.m[5] * a.m[10] + a.m[12] * a.m[6] * a.m[9];
-		inv[1] = -a.m[1] * a.m[10] * a.m[15] + a.m[1] * a.m[11] * a.m[14] + a.m[9] * a.m[2] * a.m[15] - a.m[9] * a.m[3] * a.m[14] - a.m[13] * a.m[2] * a.m[11] + a.m[13] * a.m[3] * a.m[10];
-		inv[5] = a.m[0] * a.m[10] * a.m[15] - a.m[0] * a.m[11] * a.m[14] - a.m[8] * a.m[2] * a.m[15] + a.m[8] * a.m[3] * a.m[14] + a.m[12] * a.m[2] * a.m[11] - a.m[12] * a.m[3] * a.m[10];
-		inv[9] = -a.m[0] * a.m[9] * a.m[15] + a.m[0] * a.m[11] * a.m[13] + a.m[8] * a.m[1] * a.m[15] - a.m[8] * a.m[3] * a.m[13] - a.m[12] * a.m[1] * a.m[11] + a.m[12] * a.m[3] * a.m[9];
-		inv[13] = a.m[0] * a.m[9] * a.m[14] - a.m[0] * a.m[10] * a.m[13] - a.m[8] * a.m[1] * a.m[14] + a.m[8] * a.m[2] * a.m[13] + a.m[12] * a.m[1] * a.m[10] - a.m[12] * a.m[2] * a.m[9];
-		inv[2] = a.m[1] * a.m[6] * a.m[15] - a.m[1] * a.m[7] * a.m[14] - a.m[5] * a.m[2] * a.m[15] + a.m[5] * a.m[3] * a.m[14] + a.m[13] * a.m[2] * a.m[7] - a.m[13] * a.m[3] * a.m[6];
-		inv[6] = -a.m[0] * a.m[6] * a.m[15] + a.m[0] * a.m[7] * a.m[14] + a.m[4] * a.m[2] * a.m[15] - a.m[4] * a.m[3] * a.m[14] - a.m[12] * a.m[2] * a.m[7] + a.m[12] * a.m[3] * a.m[6];
-		inv[10] = a.m[0] * a.m[5] * a.m[15] - a.m[0] * a.m[7] * a.m[13] - a.m[4] * a.m[1] * a.m[15] + a.m[4] * a.m[3] * a.m[13] + a.m[12] * a.m[1] * a.m[7] - a.m[12] * a.m[3] * a.m[5];
-		inv[14] = -a.m[0] * a.m[5] * a.m[14] + a.m[0] * a.m[6] * a.m[13] + a.m[4] * a.m[1] * a.m[14] - a.m[4] * a.m[2] * a.m[13] - a.m[12] * a.m[1] * a.m[6] + a.m[12] * a.m[2] * a.m[5];
-		inv[3] = -a.m[1] * a.m[6] * a.m[11] + a.m[1] * a.m[7] * a.m[10] + a.m[5] * a.m[2] * a.m[11] - a.m[5] * a.m[3] * a.m[10] - a.m[9] * a.m[2] * a.m[7] + a.m[9] * a.m[3] * a.m[6];
-		inv[7] = a.m[0] * a.m[6] * a.m[11] - a.m[0] * a.m[7] * a.m[10] - a.m[4] * a.m[2] * a.m[11] + a.m[4] * a.m[3] * a.m[10] + a.m[8] * a.m[2] * a.m[7] - a.m[8] * a.m[3] * a.m[6];
-		inv[11] = -a.m[0] * a.m[5] * a.m[11] + a.m[0] * a.m[7] * a.m[9] + a.m[4] * a.m[1] * a.m[11] - a.m[4] * a.m[3] * a.m[9] - a.m[8] * a.m[1] * a.m[7] + a.m[8] * a.m[3] * a.m[5];
-		inv[15] = a.m[0] * a.m[5] * a.m[10] - a.m[0] * a.m[6] * a.m[9] - a.m[4] * a.m[1] * a.m[10] + a.m[4] * a.m[2] * a.m[9] + a.m[8] * a.m[1] * a.m[6] - a.m[8] * a.m[2] * a.m[5];
-
-		det = a.m[0] * inv[0] + a.m[1] * inv[4] + a.m[2] * inv[8] + a.m[3] * inv[12];
-		if (det == 0) return *a;
-		det = 1.f / det;
-
-		MATRIX m;
-		for (int i = 0; i < 16; ++i) m.m[i] = inv[i] * det;
-		return m;
-#endif
 	}
 
 	/**
@@ -685,8 +668,7 @@ extern "C" {
 		__m128 t = _mm_move_ss(_mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 1, 0, 3)), _mm_set1_ps(1));
 		MATRIX m = { _mm_setr_ps(1, 0, 0, 0), _mm_setr_ps(0, 1, 0, 0), _mm_setr_ps(0, 0, 1, 0), _mm_shuffle_ps(t, t, _MM_SHUFFLE(0, 3, 2, 1)) };
 #else
-		// TODO
-		MATRIX m = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, v.v[0], v.v[1], v.v[2], v.v[3] };
+		MATRIX m = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, v.v[0], v.v[1], v.v[2], 1 };
 #endif
 		return m;
 	}
@@ -740,7 +722,7 @@ extern "C" {
 	 */
 	VMATH_INLINE int MatrixEqual(MATRIX *a, MATRIX *b) {
 #ifdef VMATH_SSE_INTRINSICS
-		return _mm_movemask_ps(_mm_cmpeq_ps(a->row0, b->row0)) | (_mm_movemask_ps(_mm_cmpeq_ps(a->row1, b->row1)) << 4) | (_mm_movemask_ps(_mm_cmpeq_ps(a->row2, b->row2)) << 8) | (_mm_movemask_ps(_mm_cmpeq_ps(a->row3, b->row3)) << 12);
+		return _mm_movemask_ps(_mm_cmpeq_ps(a->r[0], b->r[0])) | (_mm_movemask_ps(_mm_cmpeq_ps(a->r[1], b->r[1])) << 4) | (_mm_movemask_ps(_mm_cmpeq_ps(a->r[2], b->r[2])) << 8) | (_mm_movemask_ps(_mm_cmpeq_ps(a->r[3], b->r[3])) << 12);
 #else
 		return (a->m[0] == b->m[0] ? 1 : 0) | (a->m[1] == b->m[1] ? 1 << 1 : 0) | (a->m[2] == b->m[2] ? 1 << 2 : 0) | (a->m[3] == b->m[3] ? 1 << 3 : 0)
 			| (a->m[4] == b->m[4] ? 1 << 4 : 0) | (a->m[5] == b->m[5] ? 1 << 5 : 0) | (a->m[6] == b->m[6] ? 1 << 6 : 0) | (a->m[7] == b->m[7] ? 1 << 7 : 0)
