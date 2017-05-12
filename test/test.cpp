@@ -89,6 +89,12 @@ namespace {
 		EXPECT_NEAR(a[3], 4.0f / length, 0.001) << "The normalized w component differs.";
 	}
 
+	TEST(Vector, VectorTransform) {
+		VECTOR v = VectorSet(1, 2, 3, 4);
+		MATRIX m = MatrixSet(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+		EXPECT_TRUE(VectorEqual(VectorTransform(v, m), VectorSet(90, 100, 110, 120)) == 0xF);
+	}
+
 	bool matricesEqual(MATRIX *a, MATRIX *b) {
 		ALIGN(16) float v0[16], v1[16];
 		MatrixGet(v0, *a);

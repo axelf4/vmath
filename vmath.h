@@ -12,6 +12,7 @@ extern "C" {
 
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 /**
  * Forces data to be n-byte aligned.
@@ -79,6 +80,15 @@ extern "C" {
 		}
 #endif
 	VECTOR;
+
+	/** A 4x4 matrix. */
+	typedef struct {
+#ifdef VMATH_SSE_INTRINSICS
+		__m128 r[4]; /**< The rows of the matrix. */
+#else
+		float m[16]; /**< The components of the matrix. */
+#endif
+	} MATRIX;
 
 	/**
 	 * Stores a representation of the vector \a _A in the float array \a _V and returns \a _V.
@@ -314,6 +324,22 @@ extern "C" {
 #endif
 	}
 
+	VMATH_INLINE VECTOR VectorTransform(VECTOR v, MATRIX m) {
+#ifdef VMATH_SSE_INTRINSICS
+		return _mm_add_ps(_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(v, v, 0x0), m.r[0]), _mm_mul_ps(_mm_shuffle_ps(v, v, 0x55), m.r[1])),
+				_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(v, v, 0xAA), m.r[2]), _mm_mul_ps(_mm_shuffle_ps(v, v, 0xFF), m.r[3])));
+#else
+		const float x = v.v[0], y = v.v[1], z = v.v[2], w = v.v[3];
+		VECTOR result = {
+			m.m[0] * x + m.m[4] * y + m.m[8] * z + m.m[12] * w,
+			m.m[1] * x + m.m[5] * y + m.m[9] * z + m.m[13] * w,
+			m.m[2] * x + m.m[6] * y + m.m[10] * z + m.m[14] * w,
+			m.m[3] * x + m.m[7] * y + m.m[11] * z + m.m[15] * w,
+		};
+		return result;
+#endif
+	}
+
 	/**
 	 * Compare the elements in \a a and \a b and return a bit mask where \c 1 corresponds to equality.
 	 * @param a The vector to compare.
@@ -355,15 +381,6 @@ extern "C" {
 		return q;
 #endif
 	}
-
-	/** A 4x4 matrix. */
-	typedef struct ALIGN(16) {
-#ifdef VMATH_SSE_INTRINSICS
-		__m128 r[4]; /**< The rows of the matrix. */
-#else
-		float m[16]; /**< The components of the matrix. */
-#endif
-	} MATRIX;
 
 	/**
 	 * Stores a representation of the matrix \a _A in the float array \a _V and returns \a _V.
