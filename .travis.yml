@@ -11,4 +11,4 @@ env:
     - CXXFLAGS="-msse -msse2 -msse3"
     - CXXFLAGS="-msse -msse2 -msse3 -msse4.1"
     - CXXFLAGS="-msse -msse2 -msse3 -msse4.1 -msse4.2"
-script: (mkdir googletest && cd googletest && cmake /usr/src/gtest/ && cmake --build .) && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS:BOOL=ON -DGTEST_ROOT:STRING=googletest -DCMAKE_CXX_FLAGS=$CXXFLAGS .. && cmake --build . && ./runTests
+script: (mkdir googletest && cd googletest && cmake /usr/src/gtest/ && cmake --build .) && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS:BOOL=ON -DGTEST_ROOT:STRING=googletest -DCMAKE_CXX_FLAGS="$CXXFLAGS" .. && cmake --build . && ./runTests
