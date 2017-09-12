@@ -297,14 +297,10 @@ extern "C" {
 	VMATH_INLINE VECTOR Vector4Normalize(VECTOR a) {
 #ifdef VMATH_SSE4_1_INTRINSICS
 		return _mm_mul_ps(a, _mm_rsqrt_ps(_mm_dp_ps(a, a, 0xFF)));
-#elif defined(VMATH_SSE3_INTRINSICS)
-		__m128 tmp = _mm_mul_ps(a, b);
-		tmp = _mm_hadd_ps(tmp, tmp);
-		return _mm_cvtss_f32(_mm_hadd_ps(tmp, tmp));
 #elif defined(VMATH_SSE_INTRINSICS)
 		__m128 tmp = _mm_mul_ps(a, a);
 		tmp = _mm_add_ps(tmp, _mm_shuffle_ps(tmp, tmp, 0x4E));
-		return _mm_div_ps(a, _mm_sqrt_ps(_mm_add_ps(tmp, _mm_shuffle_ps(tmp, tmp, 0x11))));
+		return _mm_mul_ps(a, _mm_rsqrt_ps(_mm_add_ps(tmp, _mm_shuffle_ps(tmp, tmp, 0x11))));
 #else
 		float invLength = 1 / Vector4Length(a);
 		VECTOR v = { a.v[0] * invLength, a.v[1] * invLength, a.v[2] * invLength, a.v[3] * invLength};
