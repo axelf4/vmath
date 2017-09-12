@@ -257,13 +257,7 @@ extern "C" {
 	 * Returns the length or magnitude or norm of the vector \a a (||a||).
 	 */
 	VMATH_INLINE float Vector3Length(VECTOR a) {
-#ifdef VMATH_SSE4_1_INTRINSICS
-		return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(a, a, 0x71)));
-#elif defined(VMATH_SSE_INTRINSICS)
 		return sqrt(Vector3Dot(a, a));
-#else
-		return sqrt(a.v[0] * a.v[0] + a.v[1] * a.v[1] + a.v[2] * a.v[2]);
-#endif
 	}
 
 	/**
@@ -292,13 +286,7 @@ extern "C" {
 	 * Returns the length or magnitude or norm of the vector \a a (||a||).
 	 */
 	VMATH_INLINE float Vector4Length(VECTOR a) {
-#ifdef VMATH_SSE4_1_INTRINSICS
-		return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(a, a, 0xFF)));
-#elif defined(VMATH_SSE_INTRINSICS)
 		return sqrt(Vector4Dot(a, a));
-#else
-		return sqrt(a.v[0] * a.v[0] + a.v[1] * a.v[1] + a.v[2] * a.v[2] + a.v[3] * a.v[3]);
-#endif
 	}
 
 	/**
